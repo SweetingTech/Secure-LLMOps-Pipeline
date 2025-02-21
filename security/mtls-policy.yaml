@@ -1,0 +1,44 @@
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: llmops
+spec:
+  mtls:
+    mode: STRICT
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: llm-api-mtls
+  namespace: llmops
+spec:
+  host: "*.llmops.svc.cluster.local"
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: llm-api-policy
+  namespace: llmops
+spec:
+  selector:
+    matchLabels:
+      app: llm-api
+  rules:
+    - from:
+        - source:
+            principals: ["cluster.local/ns/llmops/sa/llm-api"]
+      to:
+        - operation:
+            methods: ["POST"]
+            paths: ["/llm", "/token"]
+    - from:
+        - source:
+            namespaces: ["monitoring"]
+      to:
+        - operation:
+            methods: ["GET"]
+            paths: ["/health", "/metrics"]

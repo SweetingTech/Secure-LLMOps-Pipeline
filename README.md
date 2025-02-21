@@ -241,6 +241,221 @@ pytest
 
 ---
 
+## How To Guide
+
+### How to Use the API
+
+#### 1. Authentication
+```bash
+# Get an authentication token
+curl -X POST "http://localhost:8000/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=admin&password=secret"
+
+# Response will contain your access token:
+{
+  "access_token": "eyJ0eXAi...",
+  "token_type": "bearer"
+}
+```
+
+#### 2. Making LLM Requests
+```bash
+# Basic LLM request
+curl -X POST "http://localhost:8000/llm" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Explain quantum computing",
+    "temperature": 0.7,
+    "max_tokens": 150
+  }'
+
+# With system context
+curl -X POST "http://localhost:8000/llm" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Explain quantum computing",
+    "system_context": "You are a quantum physics professor",
+    "temperature": 0.7,
+    "max_tokens": 150
+  }'
+```
+
+### How to Deploy
+
+#### Local Development
+1. **Set Up Environment**
+```bash
+# Clone repository
+git clone https://github.com/SweetingTech/Secure-LLMOps-Pipeline.git
+cd Secure-LLMOps-Pipeline
+
+# Create virtual environment
+python -m venv venv
+venv\Scripts\activate     # Windows
+source venv/bin/activate  # Linux/macOS
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+2. **Configure Environment Variables**
+```bash
+# Create .env file
+echo "OPENAI_API_KEY=your_api_key" > .env
+echo "SECRET_KEY=your_secret_key" >> .env
+```
+
+3. **Run Development Server**
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+#### Production Deployment
+
+1. **Prepare Kubernetes Cluster**
+```bash
+# Create namespace
+kubectl create namespace llmops
+
+# Create secrets
+kubectl create secret generic llm-api-secrets \
+  --namespace llmops \
+  --from-literal=openai-api-key=your_api_key \
+  --from-literal=jwt-secret-key=your_secret_key
+```
+
+2. **Configure Helm Values**
+```bash
+# Edit values.yaml to match your environment
+vim charts/llm-api/values.yaml
+```
+
+3. **Deploy Application**
+```bash
+# Install with Helm
+helm install llm-api charts/llm-api --namespace llmops
+
+# Verify deployment
+kubectl get pods -n llmops
+kubectl get services -n llmops
+```
+
+### How to Monitor
+
+#### 1. View Application Logs
+```bash
+# Get pod name
+kubectl get pods -n llmops
+
+# View logs
+kubectl logs -f pod/llm-api-xxxxx -n llmops
+```
+
+#### 2. Access Metrics
+```bash
+# Port forward Elasticsearch
+kubectl port-forward svc/elasticsearch-master 9200:9200 -n logging
+
+# View metrics in Kibana
+kubectl port-forward svc/kibana 5601:5601 -n logging
+```
+
+### How to Secure
+
+#### 1. Enable mTLS
+```bash
+# Apply mTLS policy
+kubectl apply -f security/mtls-policy.yaml
+```
+
+#### 2. Configure Network Policies
+```bash
+# Apply network isolation
+kubectl apply -f charts/llm-api/templates/networkpolicy.yaml
+```
+
+#### 3. Rotate Secrets
+```bash
+# Update API key
+kubectl create secret generic llm-api-secrets \
+  --namespace llmops \
+  --from-literal=openai-api-key=new_api_key \
+  --from-literal=jwt-secret-key=new_secret_key \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# Restart pods to pick up new secrets
+kubectl rollout restart deployment llm-api -n llmops
+```
+
+### How to Test
+
+#### 1. Run Unit Tests
+```bash
+# Install test dependencies
+pip install -r requirements.txt
+
+# Run all tests
+pytest
+
+# Run specific test file
+pytest tests/test_main.py
+pytest tests/test_services.py
+pytest tests/test_middleware.py
+```
+
+#### 2. Manual Testing
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# Authentication test
+curl -X POST "http://localhost:8000/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=admin&password=secret"
+
+# Protected endpoint test
+curl -X GET "http://localhost:8000/users/me" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### How to Troubleshoot
+
+#### 1. Common Issues
+
+- **Authentication Failures**
+  - Check token expiration
+  - Verify correct username/password
+  - Ensure Authorization header is properly formatted
+
+- **Rate Limiting**
+  - Default limit is 60 requests per minute
+  - Check response headers for rate limit status
+  - Adjust limits in values.yaml if needed
+
+- **LLM Errors**
+  - Verify OPENAI_API_KEY is valid
+  - Check prompt safety filters
+  - Monitor API response logs
+
+#### 2. Debugging
+
+```bash
+# Enable debug logging
+kubectl patch deployment llm-api \
+  -n llmops \
+  --type json \
+  -p '[{"op": "replace", "path": "/spec/template/spec/containers/0/env/0/value", "value": "DEBUG"}]'
+
+# View detailed logs
+kubectl logs -f deployment/llm-api -n llmops
+
+# Check pod status
+kubectl describe pod llm-api-xxxxx -n llmops
+```
+
 ## Future Enhancements
 
 - **Automated Threat Response** (Falco + Kubernetes)
