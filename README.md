@@ -4,6 +4,8 @@
 
 This project provides a **secure LLMOps pipeline** for safely deploying, managing, and securing **large language models (LLMs)** in production. It implements **best practices** in DevSecOps to protect AI models from adversarial attacks, unauthorized access, and data leaks.
 
+The pipeline is built using FastAPI for the API layer, LangChain for LLM integration, and Kubernetes for orchestration. It includes comprehensive security features like JWT authentication, rate limiting, prompt injection detection, and network policies.
+
 ## Features
 
 - **Secure API for LLM Responses** (LangChain, Hugging Face, OpenAI API)
@@ -57,7 +59,7 @@ This pipeline supports the **entire lifecycle** of LLM operations:
 
 ---
 
-## Setup Instructions
+## Quick Start
 
 ### Prerequisites
 
@@ -66,80 +68,160 @@ Ensure you have the following installed:
 - **Docker & Docker Compose**
 - **Kubernetes (Minikube or a Cloud Provider's Kubernetes)**
 - **Helm (for package management)**
-- **Python 3.8+**
-- **Terraform (for Infrastructure as Code - optional)**
-- **Node.js (if implementing a frontend)**
+- **Python 3.9+**
+- **OpenAI API Key**
 
-### 1️⃣ Clone the Repository
+### Local Development Setup
 
-```sh
+1. **Clone the Repository**
+```bash
 git clone https://github.com/SweetingTech/Secure-LLMOps-Pipeline.git
 cd Secure-LLMOps-Pipeline
 ```
 
-### 2️⃣ Set Up Python Virtual Environment
+2. **Create and Activate Virtual Environment**
+```bash
+python -m venv venv
+# On Windows
+venv\Scripts\activate
+# On macOS/Linux
+source venv/bin/activate
+```
 
-```sh
-python3 -m venv venv
-source venv/bin/activate  # macOS/Linux
-venv\Scripts\activate     # Windows
+3. **Install Dependencies**
+```bash
 pip install -r requirements.txt
 ```
 
-### 3️⃣ Deploy to Kubernetes
+4. **Set Environment Variables**
+Create a `.env` file in the root directory:
+```env
+OPENAI_API_KEY=your_openai_api_key
+SECRET_KEY=your_jwt_secret_key
+```
 
-#### **(a) Start Minikube or Use Cloud Kubernetes Cluster**
+5. **Run the API Locally**
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
 
-```sh
+### Kubernetes Deployment
+
+1. **Start Kubernetes Cluster**
+```bash
+# Using Minikube
 minikube start
+```
+
+2. **Create Namespace**
+```bash
 kubectl create namespace llmops
 ```
 
-#### **(b) Deploy LLM API**
+3. **Create Required Secrets**
+```bash
+kubectl create secret generic llm-api-secrets \
+  --namespace llmops \
+  --from-literal=openai-api-key=your_openai_api_key \
+  --from-literal=jwt-secret-key=your_jwt_secret_key
+```
 
-```sh
+4. **Deploy Using Helm**
+```bash
 helm install llm-api charts/llm-api --namespace llmops
 ```
 
-### 4️⃣ Set Up Security Features
-
-#### **(a) Enable mTLS between Services**
-
-```sh
-kubectl apply -f security/mtls-policy.yaml
+5. **Verify Deployment**
+```bash
+kubectl get pods -n llmops
+kubectl get services -n llmops
 ```
 
-#### **(b) Apply RBAC Policies**
+### Using the API
 
-```sh
-kubectl apply -f security/rbac.yaml
+1. **Get Authentication Token**
+```bash
+curl -X POST "http://localhost:8000/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=admin&password=secret"
 ```
 
-### 5️⃣ Set Up Logging & Monitoring
-
-```sh
-helm install loki grafana/loki-stack --namespace monitoring
-kubectl apply -f monitoring/fluentd-config.yaml
+2. **Make LLM Request**
+```bash
+curl -X POST "http://localhost:8000/llm" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Explain quantum computing",
+    "temperature": 0.7,
+    "max_tokens": 150
+  }'
 ```
 
-### 6️⃣ Start the API
+### API Documentation
 
-```sh
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+Once the API is running, visit:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+## Development
+
+### Project Structure
+```
+.
+├── app/
+│   ├── main.py              # FastAPI application
+│   ├── services/
+│   │   └── llm_service.py   # LLM integration
+│   └── middleware/
+│       └── rate_limiter.py  # Rate limiting
+├── charts/                  # Helm charts
+│   └── llm-api/
+├── requirements.txt         # Python dependencies
+└── Dockerfile              # Container definition
 ```
 
-### 7️⃣ Test the Secure API
+### Security Features
 
-#### **(a) Obtain JWT Token**
+1. **Authentication & Authorization**
+   - JWT-based authentication
+   - Role-based access control
+   - Token expiration and refresh
 
-```sh
-curl -X POST "http://localhost:8000/auth" -d '{"username": "admin", "password": "securepass"}'
+2. **Rate Limiting**
+   - Per-client request limiting
+   - Configurable thresholds
+   - Protection against DoS attacks
+
+3. **Prompt Safety**
+   - Injection detection
+   - Input sanitization
+   - Pattern-based filtering
+
+4. **Network Security**
+   - Kubernetes network policies
+   - Service isolation
+   - Secure external communication
+
+5. **Monitoring & Logging**
+   - Request tracking
+   - Error logging
+   - Performance metrics
+
+### Building the Container
+
+```bash
+docker build -t llmops/api:latest .
 ```
 
-#### **(b) Query the LLM Securely**
+### Running Tests
 
-```sh
-curl -X POST "http://localhost:8000/llm" -H "Authorization: Bearer <TOKEN>" -d '{"prompt": "Explain quantum computing"}'
+```bash
+# Install test dependencies
+pip install -r requirements.txt
+
+# Run tests
+pytest
 ```
 
 ---
@@ -178,4 +260,3 @@ curl -X POST "http://localhost:8000/llm" -H "Authorization: Bearer <TOKEN>" -d '
 ## License
 
 MIT License
-

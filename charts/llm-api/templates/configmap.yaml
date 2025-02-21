@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "llm-api.fullname" . }}-config
+  labels:
+    {{- include "llm-api.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    app:
+      logLevel: {{ .Values.app.logLevel | quote }}
+      rateLimiting:
+        enabled: {{ .Values.app.rateLimiting.enabled }}
+        requestsPerMinute: {{ .Values.app.rateLimiting.requestsPerMinute }}
+      
+      security:
+        cors:
+          allowedOrigins:
+            {{- toYaml .Values.app.security.cors.allowedOrigins | nindent 12 }}
+        jwt:
+          tokenExpireMinutes: {{ .Values.app.security.jwt.tokenExpireMinutes }}
+
+    monitoring:
+      enabled: {{ .Values.monitoring.enabled }}
+      serviceMonitor:
+        enabled: {{ .Values.monitoring.serviceMonitor.enabled }}
+        interval: {{ .Values.monitoring.serviceMonitor.interval }}
+
+    logging:
+      enabled: {{ .Values.logging.enabled }}
+      elasticsearch:
+        enabled: {{ .Values.logging.elasticsearch.enabled }}
+        host: {{ .Values.logging.elasticsearch.host | quote }}
+        port: {{ .Values.logging.elasticsearch.port }}
+      fluentd:
+        enabled: {{ .Values.logging.fluentd.enabled }}
+        tag: {{ .Values.logging.fluentd.tag | quote }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "llm-api.fullname" . }}-secrets
+  labels:
+    {{- include "llm-api.labels" . | nindent 4 }}
+type: Opaque
+data:
+  openai-api-key: {{ required "OpenAI API key is required" .Values.env | get "OPENAI_API_KEY" | b64enc | quote }}
+  jwt-secret-key: {{ required "JWT secret key is required" .Values.env | get "SECRET_KEY" | b64enc | quote }}

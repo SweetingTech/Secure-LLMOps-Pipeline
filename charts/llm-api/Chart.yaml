@@ -1,0 +1,12 @@
+apiVersion: v2
+name: llm-api
+description: A Helm chart for deploying the Secure LLMOps Pipeline API
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+maintainers:
+  - name: "Douglas Jay Sweeting"
+    email: "djsweeting@example.com"
+
+dependencies: []

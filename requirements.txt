@@ -1,0 +1,26 @@
+# Core Dependencies
+fastapi==0.104.1
+uvicorn==0.24.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+pydantic==2.4.2
+python-dotenv==1.0.0
+
+# LLM & Vector DB
+langchain==0.0.325
+openai==1.2.3
+chromadb==0.4.15
+
+# Security
+python-jose[cryptography]==3.3.0
+cryptography==41.0.4
+authlib==1.2.1
+
+# Monitoring & Logging
+elasticsearch==8.10.1
+fluent-logger==0.9.7
+
+# Testing
+pytest==7.4.3
+httpx==0.25.1
